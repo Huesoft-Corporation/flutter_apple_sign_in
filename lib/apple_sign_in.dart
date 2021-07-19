@@ -11,14 +11,13 @@ export 'open_id_operation.dart';
 export 'apple_sign_in_button.dart';
 
 class AppleSignIn {
-  static const MethodChannel _methodChannel =
-      const MethodChannel('dev.gilder.tom/apple_sign_in');
+  static const MethodChannel _methodChannel = const MethodChannel('dev.gilder.tom/apple_sign_in');
   static const EventChannel _eventChannel =
       const EventChannel('dev.gilder.tom/apple_sign_in_events');
 
   static const _errorCodeCancelled = 1001;
 
-  static Stream<void> _onCredentialRevoked;
+  static Stream<void>? _onCredentialRevoked;
 
   /// A stream that emits an event when Apple ID credentials have been revoked.
   static Stream<void> get onCredentialRevoked {
@@ -26,7 +25,7 @@ class AppleSignIn {
       _onCredentialRevoked = _eventChannel.receiveBroadcastStream();
     }
 
-    return _onCredentialRevoked;
+    return _onCredentialRevoked!;
   }
 
   /// Starts the authorization flow requests provided.
@@ -37,8 +36,7 @@ class AppleSignIn {
   ///    AppleIdRequest(requestedScopes: [Scope.email, Scope.fullName])
   /// ]);
   /// ```
-  static Future<AuthorizationResult> performRequests(
-      List<AuthorizationRequest> requests) async {
+  static Future<AuthorizationResult> performRequests(List<AuthorizationRequest> requests) async {
     final result = await _methodChannel.invokeMethod(
       'performRequests',
       {'requests': requests.map((request) => request.toMap()).toList()},
@@ -48,7 +46,6 @@ class AppleSignIn {
     switch (status) {
       case 'authorized':
         return _makeAuthorizationResult(result);
-        break;
 
       case 'error':
         final error = NsError.fromMap(result['error']);
@@ -60,27 +57,23 @@ class AppleSignIn {
         }
 
         return AuthorizationResult(
-            status: AuthorizationStatus.error,
-            error: NsError.fromMap(result['error']));
-        break;
+            status: AuthorizationStatus.error, error: NsError.fromMap(result['error']));
     }
 
     throw "performRequests: Unknown status returned: '$status'";
   }
 
   /// Returns the credential state for the given user. Returns a [CredentialState].
-  static Future<CredentialState> getCredentialState(String userId) async {
+  static Future<CredentialState> getCredentialState(String? userId) async {
     assert(userId != null, 'Must provide userId');
 
-    final result = await _methodChannel
-        .invokeMethod('getCredentialState', {'userId': userId});
+    final result = await _methodChannel.invokeMethod('getCredentialState', {'userId': userId});
     final credentialState = result['credentialState'];
 
     switch (credentialState) {
       case 'error':
         return CredentialState(
-            status: CredentialStatus.error,
-            error: NsError.fromMap(result['error']));
+            status: CredentialStatus.error, error: NsError.fromMap(result['error']));
 
       case 'revoked':
         return CredentialState(status: CredentialStatus.revoked);
@@ -106,22 +99,18 @@ class AppleSignIn {
 
     final result = await _methodChannel.invokeMethod('isAvailable');
     final isAvailable = result['isAvailable'] == 1;
-    assert(isAvailable != null);
     return isAvailable;
   }
 
   static AuthorizationResult _makeAuthorizationResult(Map params) {
     switch (params['credentialType']) {
       case 'ASAuthorizationAppleIDCredential':
-        final Map credential = params['credential'];
+        final Map? credential = params['credential'];
         assert(credential != null);
 
         return AuthorizationResult(
             status: AuthorizationStatus.authorized,
-            credential: AppleIdCredential.fromMap(credential));
-
-        break;
-
+            credential: AppleIdCredential.fromMap(credential!));
       default:
         throw 'Unknown credentials type';
     }
@@ -132,25 +121,25 @@ class AppleSignIn {
 class CredentialState {
   final CredentialStatus status;
 
-  final NsError error;
+  final NsError? error;
 
-  const CredentialState({@required this.status, this.error});
+  const CredentialState({required this.status, this.error});
 }
 
 @immutable
 class NsError {
-  final int code;
+  final int? code;
 
-  final String domain;
+  final String? domain;
 
-  final String localizedDescription;
+  final String? localizedDescription;
 
-  final String localizedRecoverySuggestion;
+  final String? localizedRecoverySuggestion;
 
-  final String localizedFailureReason;
+  final String? localizedFailureReason;
 
   @override
-  String toString() => localizedDescription;
+  String toString() => localizedDescription ?? '';
 
   const NsError(
       {this.code,
@@ -160,8 +149,6 @@ class NsError {
       this.localizedFailureReason});
 
   factory NsError.fromMap(Map map) {
-    assert(map != null);
-
     return NsError(
       code: map['code'],
       domain: map['domain'],
@@ -182,9 +169,7 @@ enum CredentialStatus {
 
   /// The user can’t be found.
   notFound,
-
   transferred,
-
   error
 }
 
@@ -193,12 +178,12 @@ enum CredentialStatus {
 class AuthorizationResult {
   final AuthorizationStatus status;
 
-  final AppleIdCredential credential;
+  final AppleIdCredential? credential;
 
-  final NsError error;
+  final NsError? error;
 
   const AuthorizationResult({
-    @required this.status,
+    required this.status,
     this.credential,
     this.error,
   });
